@@ -9,19 +9,19 @@ plt.switch_backend('agg')
 
 def getdata():
     # read data and shuffle
-    index=[i for i in range(11788)]
+    index=[i for i in range(64)]
     random.shuffle(index)
 
-    f=open("./id_to_data","rb+")
+    f=open("/media/teejay/TJ HDD2/data/id_to_data","rb+")
     data=pickle.load(f)
     data=data[index]
-    data_train=data[0:9000]
-    data_test=data[9000:]
-    f=open("./id_to_box","rb+")
+    data_train=data[0:40]
+    data_test=data[40:]
+    f=open("/media/teejay/TJ HDD2/data/id_to_box","rb+")
     box=pickle.load(f)
     box=box[index]
-    box_train=box[0:9000]
-    box_test=box[9000:]
+    box_train=box[0:40]
+    box_test=box[40:]
     return data_train,box_train,data_test,box_test
 
 
@@ -45,4 +45,3 @@ def plot_model(model_details):
     axs[1].legend(['train', 'val'], loc='best')
 
     plt.savefig("model.png")
-

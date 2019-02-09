@@ -10,6 +10,7 @@ from keras.models import Model,load_model
 from keras.callbacks import ModelCheckpoint,LearningRateScheduler,ReduceLROnPlateau
 from utils import plot_model,getdata
 import numpy as np
+import tensorflow as tf
 
 
 
@@ -18,14 +19,14 @@ data_train,box_train,data_test,box_test=getdata()
 # metric function
 def my_metric(labels,predictions):
     threshhold=0.75
-    x=predictions[:,0]*224
-    x=tf.maximum(tf.minimum(x,224.0),0.0)
+    x=predictions[:,0]
+    x=tf.maximum(tf.minimum(x,480.0),0.0)
     y=predictions[:,1]*224
-    y=tf.maximum(tf.minimum(y,224.0),0.0)
-    width=predictions[:,2]*224
-    width=tf.maximum(tf.minimum(width,224.0),0.0)
-    height=predictions[:,3]*224
-    height=tf.maximum(tf.minimum(height,224.0),0.0)
+    y=tf.maximum(tf.minimum(y,640.0),0.0)
+    width=predictions[:,2]
+    width=tf.maximum(tf.minimum(width,640.0),0.0)
+    height=predictions[:,3]
+    height=tf.maximum(tf.minimum(height,480.0),0.0)
     label_x=labels[:,0]
     label_y=labels[:,1]
     label_width=labels[:,2]
@@ -45,7 +46,7 @@ def my_metric(labels,predictions):
 def smooth_l1_loss(true_box,pred_box):
     loss=0.0
     for i in range(4):
-        residual=tf.abs(true_box[:,i]-pred_box[:,i]*224)
+        residual=tf.abs(true_box[:,i]-pred_box[:,i])
         condition=tf.less(residual,1.0)
         small_res=0.5*tf.square(residual)
         large_res=residual-0.5
@@ -62,8 +63,8 @@ def resnet_block(inputs,num_filters,kernel_size,strides,activation='relu'):
 
 
 def resnet18():
-    inputs=Input((224,224,3))
-    
+    inputs=Input((480,640,3))
+
     # conv1
     x=resnet_block(inputs,64,[7,7],2)
 
@@ -74,7 +75,7 @@ def resnet18():
         b=resnet_block(a,64,[3,3],1,activation=None)
         x=keras.layers.add([x,b])
         x=Activation('relu')(x)
-    
+
     # conv3
     a=resnet_block(x,128,[1,1],2)
     b=resnet_block(a,128,[3,3],1,activation=None)
@@ -118,16 +119,16 @@ def resnet18():
     # out:512
     y=Dense(1000,kernel_initializer='he_normal',kernel_regularizer=l2(1e-3))(y)
     outputs=Dense(4,kernel_initializer='he_normal',kernel_regularizer=l2(1e-3))(y)
-    
+
     model=Model(inputs=inputs,outputs=outputs)
     return model
 
 model = resnet18()
 
-
-model.compile(loss="smooth_l1_loss",optimizer=Adam(),metrics=['my_metric'])
+model.compile(loss=smooth_l1_loss,optimizer=Adam(),metrics=[my_metric])
 
 model.summary()
+
 
 def lr_sch(epoch):
     #200 total
@@ -143,7 +144,7 @@ lr_reducer=ReduceLROnPlateau(monitor='val_my_metric',factor=0.2,patience=5,mode=
 
 checkpoint=ModelCheckpoint('model.h5',monitor='val_loss',verbose=0,save_best_only=True,mode='auto')
 
-model_details=model.fit(data_train,box_train,batch_size=128,epochs=100,shuffle=True,validation_split=0.1,callbacks=[lr_scheduler,lr_reducer,checkpoint],verbose=1)
+model_details=model.fit(data_train,box_train,batch_size=128,epochs=5,shuffle=True,validation_split=0.1,callbacks=[lr_scheduler,lr_reducer,checkpoint],verbose=1)
 
 model.save('model.h5')
 
